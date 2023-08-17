@@ -114,9 +114,33 @@ class AddCategoryWidget extends StatelessWidget {
                                 incomeCategoryList[index].categoryName),
                             trailing: IconButton(
                                 onPressed: () {
-                                  context.read<CategoriesBloc>().add(
-                                      DeleteIncomeCategory(
-                                          incomeCategoryList[index]));
+                                  showDialog(
+                                      context: context,
+                                      builder: (BuildContext context) {
+                                        return AlertDialog(
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          title: const Text(confirmDelete),
+                                          content: const Text("Are you sure you want to delete this category"),
+                                          actions: <Widget>[
+                                            TextButton(
+                                              onPressed: () => Navigator.of(context).pop(false),
+                                              child: const Text(no),
+                                            ),
+                                            TextButton(
+                                              onPressed: () {
+                                                context.read<CategoriesBloc>().add(
+                                                    DeleteIncomeCategory(
+                                                        incomeCategoryList[index]));
+                                                Navigator.pop(context);
+                                              },
+                                              child: const Text(yes,style: TextStyle(color: Colors.red),),
+                                            ),
+                                          ],
+                                        );
+                                      });
+
                                 },
                                 icon: const Icon(
                                   Icons.delete,
@@ -140,11 +164,35 @@ class AddCategoryWidget extends StatelessWidget {
                             title: Text(
                                 expenseCategoryList[index].categoryName),
                             trailing: IconButton(
-                                onPressed: () {
-                                  context.read<CategoriesBloc>().add(
-                                      DeleteExpenseCategory(
-                                          expenseCategoryList[index]));
-                                },
+                              onPressed: () {
+                                showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return AlertDialog(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        title: const Text(confirmDelete),
+                                        content: const Text("Are you sure you want to delete this category"),
+                                        actions: <Widget>[
+                                          TextButton(
+                                            onPressed: () => Navigator.of(context).pop(false),
+                                            child: const Text(no),
+                                          ),
+                                          TextButton(
+                                            onPressed: () {
+                                              context.read<CategoriesBloc>().add(
+                                                  DeleteExpenseCategory(
+                                                      expenseCategoryList[index]));
+                                              Navigator.pop(context);
+                                            },
+                                            child: const Text(yes,style: TextStyle(color: Colors.red),),
+                                          ),
+                                        ],
+                                      );
+                                    });
+
+                              },
                                 icon: const Icon(
                                   Icons.delete,
                                   color: Colors.red,

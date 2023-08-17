@@ -152,6 +152,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                 title: Text(category.category),
                                 value: category,
                                 groupValue: categoryChoose,
+                                fillColor: MaterialStateColor.resolveWith((states) => gradientColor3),
                                 onChanged: (newSelectedCategory) {
                                   setState(() {
                                     categoryChoose = newSelectedCategory;
