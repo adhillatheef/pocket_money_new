@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:pocket_money_new/constants.dart';
 
 class MultiSelect extends StatefulWidget {
@@ -41,15 +42,28 @@ class _MultiSelectState extends State<MultiSelect> {
       ),
       title: const Text(selectCategory),
       content: SingleChildScrollView(
-        child: ListBody(
-          children: widget.items
-              .map((item) => CheckboxListTile(
-            value: _selectedItems.contains(item),
-            title: Text(item),
-            controlAffinity: ListTileControlAffinity.leading,
-            onChanged: (isChecked) => _itemChange(item, isChecked!),
-          ))
-              .toList(),
+        child: Column(
+          children: [
+            widget.items.isEmpty? Column(
+              children: [
+                Center(
+                    child: Lottie.asset(
+                        repeat: false,
+                        'assets/lottie_files/134394-no-transaction.json')),
+                const Center(child: Text(pleaseAddCategory),)
+              ],
+            ): const SizedBox(),
+            ListBody(
+              children: widget.items
+                  .map((item) => CheckboxListTile(
+                value: _selectedItems.contains(item),
+                title: Text(item),
+                controlAffinity: ListTileControlAffinity.leading,
+                onChanged: (isChecked) => _itemChange(item, isChecked!),
+              ))
+                  .toList(),
+            ),
+          ],
         ),
       ),
       actions: [
@@ -58,8 +72,14 @@ class _MultiSelectState extends State<MultiSelect> {
           child: const Text(cancel, style: TextStyle(color: Colors.redAccent)),
         ),
         TextButton(
-          onPressed: _submit,
-          child: const Text(submit,style: TextStyle(color: gradientColor1)),
+          onPressed: (){
+            if(widget.items.isEmpty){
+              Navigator.pop(context);
+            }else{
+              _submit();
+            }
+          },
+          child:  Text(widget.items.isEmpty?ok:submit,style: const TextStyle(color: gradientColor1)),
         ),
       ],
     );

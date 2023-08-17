@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pocket_money_new/bloc/categories_bloc.dart';
 import 'package:pocket_money_new/bloc/transaction_bloc.dart';
 import 'package:pocket_money_new/screens/splash_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -107,6 +108,7 @@ class _AppDrawerState extends State<AppDrawer> {
   }
   confirmDismiss(BuildContext context) {
     TransactionBloc? authBloc = BlocProvider.of<TransactionBloc>(context);
+    CategoriesBloc? categoriesBloc = BlocProvider.of<CategoriesBloc>(context);
     final navigator = Navigator.of(context);
     return  showDialog(
         context: context,
@@ -127,6 +129,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   SharedPreferences preferences = await SharedPreferences.getInstance();
                   await preferences.clear();
                   authBloc.add(ClearData());
+                  categoriesBloc.add(const ClearCategoriesData());
                   StaticData.userName=null;
                   await Future.delayed(const Duration(milliseconds: 200));
                   navigator.pushAndRemoveUntil(MaterialPageRoute(

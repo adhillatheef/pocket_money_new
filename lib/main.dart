@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/adapters.dart';
+import 'package:pocket_money_new/bloc/categories_bloc.dart';
 import 'package:pocket_money_new/constants.dart';
+import 'package:pocket_money_new/repository/expense_category_model.dart';
+import 'package:pocket_money_new/repository/expense_category_repository.dart';
+import 'package:pocket_money_new/repository/income_category_model.dart';
+import 'package:pocket_money_new/repository/income_category_repository.dart';
 import 'package:pocket_money_new/repository/model.dart';
 import 'package:pocket_money_new/repository/repository.dart';
 import 'package:pocket_money_new/screens/splash_screen.dart';
@@ -17,7 +22,16 @@ void main() async {
   if (!Hive.isAdapterRegistered(TransactionAdapter().typeId)) {
     Hive.registerAdapter(TransactionAdapter());
   }
+  if (!Hive.isAdapterRegistered(IncomeCategoryModelAdapter().typeId)) {
+    Hive.registerAdapter(IncomeCategoryModelAdapter());
+  }
+  if (!Hive.isAdapterRegistered(ExpenseCategoryModelAdapter().typeId)) {
+    Hive.registerAdapter(ExpenseCategoryModelAdapter());
+  }
+
   await Hive.openBox<Transaction>('transactions');
+  await Hive.openBox<IncomeCategoryModel>('incomeCategories');
+  await Hive.openBox<ExpenseCategoryModel>('expenseCategories');
   SharedPreferences prefs = await SharedPreferences.getInstance();
   var userName = prefs.getString("userName");
   if (userName != null) {
@@ -37,6 +51,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Repository repository = Repository();
+    final IncomeRepository incomeRepository = IncomeRepository();
+    final ExpenseRepository expenseRepository = ExpenseRepository();
     return MultiBlocProvider(
       providers: [
         BlocProvider(
@@ -47,6 +63,7 @@ class MyApp extends StatelessWidget {
           ThemeBloc()
             ..add(InitialThemeSetEvent()),
         ),
+        BlocProvider(create: (context) => CategoriesBloc(incomeRepository: incomeRepository, expenseRepository: expenseRepository)),
       ],
       child: BlocBuilder<ThemeBloc, ThemeData>(
         builder: (context, state) {

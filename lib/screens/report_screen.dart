@@ -3,12 +3,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
 import 'package:pocket_money_new/bloc/transaction_bloc.dart';
+import 'package:pocket_money_new/repository/expense_category_model.dart';
+import 'package:pocket_money_new/repository/expense_category_repository.dart';
+import 'package:pocket_money_new/repository/income_category_model.dart';
+import 'package:pocket_money_new/repository/income_category_repository.dart';
 import 'package:pocket_money_new/theme_bloc/theme_bloc.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
 import '../constants.dart';
 import '../repository/model.dart';
-import '../repository/repository.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/multi_select_widget.dart';
 import '../widgets/transaction_tile.dart';
@@ -25,14 +28,18 @@ class ReportScreen extends StatefulWidget {
 class _ReportScreenState extends State<ReportScreen> {
   TextEditingController dateController = TextEditingController();
   TextEditingController searchController = TextEditingController();
-  CategoryListDataModel? categoryChoose;
   List<String> subCategoryList = [];
+  List<String> incomeCategoryStringList = [];
+  List<String> expenseCategoryStringList = [];
   DateTimeRange? date;
   DateTime? firstDate;
   DateTime? lastDate;
   List<String> selectedItems = [];
+  List<String> selectedIncomeAndExpense = [];
   List<Transaction> transactions = [];
   List<Transaction> filteredList = [];
+  List<IncomeCategoryModel> incomeCategoryList = [];
+  List<ExpenseCategoryModel> expenseCategoryList = [];
   bool valid = false;
 
 
@@ -40,7 +47,7 @@ class _ReportScreenState extends State<ReportScreen> {
     final List<String>? results = await showDialog(
       context: context,
       builder: (BuildContext context) {
-        return MultiSelect(items: subCategoryList);
+        return  MultiSelect(items: subCategoryList);
       },
     );
 
@@ -52,17 +59,29 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
 
-  onIncomeExpenseChange(){
-    if(categoryChoose!.isIncome){
+  void _showMultiSelectForIncomeAndExpense() async {
+    final List<String>? results = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return const MultiSelect(items: ["Income", "Expense"]);
+      },
+    );
+
+    // Update UI
+    if (results != null) {
       setState(() {
-        subCategoryList = incomeCategories;
-        selectedItems = [];
+        selectedIncomeAndExpense = results;
+        if(selectedIncomeAndExpense.contains("Income") && !selectedIncomeAndExpense.contains("Expense")){
+          subCategoryList = incomeCategoryStringList;
+        } else if(!selectedIncomeAndExpense.contains("Income") && selectedIncomeAndExpense.contains("Expense")){
+          subCategoryList = expenseCategoryStringList;
+        }else{
+          subCategoryList = incomeCategoryStringList + expenseCategoryStringList;
+        }
       });
-    }else{
-      subCategoryList = expenseCategories;
-      selectedItems = [];
     }
   }
+
 
   getFilteredTransactions({
     DateTime? startDate,
@@ -70,67 +89,79 @@ class _ReportScreenState extends State<ReportScreen> {
     List<String>? categories,
   }) {
     final filteredTransactions = <Transaction>[];
+
     for (final transaction in transactions) {
-      if (categories != null && !categories.contains(transaction.subCategory)) {
-        continue;
+      if (transaction.date!.isAfter(startDate!) && transaction.date!.isBefore(endDate!) && (categories == null || categories.contains(transaction.subCategory))) {
+        filteredTransactions.add(transaction);
       }
-      if (startDate != null && transaction.date!.isBefore(startDate)) {
-        continue;
-      }
-      if (endDate != null && transaction.date!.isAfter(endDate)) {
-        continue;
-      }
-      filteredTransactions.add(transaction);
     }
-    // return filteredTransactions;
-    setState(() {
-      filteredList = filteredTransactions;
-    });
+     setState(() {
+        filteredList = filteredTransactions;
+      });
   }
+
+
 
   double getTotal(List<Transaction> transactions) {
     double total = 0;
     if (transactions.isNotEmpty) {
-      total = transactions.fold(0, (previousValue, element) => previousValue + element.amount!);
+      total = transactions.fold(
+          0, (previousValue, element) => previousValue + element.amount!);
     }
     return total;
   }
 
-
   @override
   void initState() {
     context.read<TransactionBloc>().add(GetTransactions());
-    categoryChoose = categoryDataList[0];
-    subCategoryList = incomeCategories;
+    incomeCategoryList = IncomeRepository().incomeCategories;
+    expenseCategoryList = ExpenseRepository().expenseCategories;
+    incomeCategoryStringList = incomeCategoryList.map((e) => e.categoryName).toList();
+    expenseCategoryStringList = expenseCategoryList.map((e) => e.categoryName).toList();
+    subCategoryList = incomeCategoryStringList + expenseCategoryStringList;
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
     final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
-    return BlocBuilder<ThemeBloc,ThemeData>(
-      builder: (context, themeState){
-        return SafeArea(child: Scaffold(
+    return BlocBuilder<ThemeBloc, ThemeData>(
+      builder: (context, themeState) {
+        return SafeArea(
+            child: Scaffold(
           key: scaffoldKey,
-          backgroundColor: themeState==ThemeData.dark()?Theme.of(context).scaffoldBackgroundColor:backGroundColor,
-          endDrawer: AppDrawer(userName:StaticData.userName!=null?StaticData.userName!:""),
+          backgroundColor: themeState == ThemeData.dark()
+              ? Theme.of(context).scaffoldBackgroundColor
+              : backGroundColor,
+          endDrawer: AppDrawer(
+              userName:
+                  StaticData.userName != null ? StaticData.userName! : ""),
           appBar: AppBar(
-            leading:  IconButton(icon:const  Icon(Icons.arrow_back),color: grayColor,onPressed: (){
-              Navigator.pop(context);
-            }),
-            title:  Text(report,style: TextStyle(
-                foreground: Paint()..shader = linearGradient,
-                fontSize: 30,
-                fontWeight: FontWeight.bold),),
+            leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                color: grayColor,
+                onPressed: () {
+                  Navigator.pop(context);
+                }),
+            title: Text(
+              report,
+              style: TextStyle(
+                  foreground: Paint()..shader = linearGradient,
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold),
+            ),
             centerTitle: true,
             backgroundColor: Colors.transparent,
             elevation: 0,
             actions: [
               Padding(
                 padding: const EdgeInsets.all(8.0),
-                child: SettingsIcon(onTap: () {
-                  scaffoldKey.currentState?.openEndDrawer();
-                }, icon: Icons.settings,),
+                child: SettingsIcon(
+                  onTap: () {
+                    scaffoldKey.currentState?.openEndDrawer();
+                  },
+                  icon: Icons.settings,
+                ),
               )
             ],
           ),
@@ -148,41 +179,54 @@ class _ReportScreenState extends State<ReportScreen> {
                         controller: searchController,
                         decoration: InputDecoration(
                           errorStyle: const TextStyle(
-                              color: gradientColor3,fontSize: 16),
+                              color: gradientColor3, fontSize: 16),
                           hintText: searchNote,
-                          suffixIcon: IconButton(onPressed:() {
-                            if(searchController.text.isNotEmpty){
-                              setState(() {
-                                valid = false;
-                                filteredList = transactions.where((transaction) =>
-                                    transaction.note!.toLowerCase().contains(searchController.text.toLowerCase())).toList();
-                              });
-                            }else{
-                              setState(() {
-                                valid = true;
-                              });
-                            }
-                          }, icon:const Icon(Icons.search) ),
+                          suffixIcon: IconButton(
+                              onPressed: () {
+                                if (searchController.text.isNotEmpty) {
+                                  setState(() {
+                                    valid = false;
+                                    filteredList = transactions
+                                        .where((transaction) => transaction
+                                            .note!
+                                            .toLowerCase()
+                                            .contains(searchController.text
+                                                .toLowerCase()))
+                                        .toList();
+                                  });
+                                } else {
+                                  setState(() {
+                                    valid = true;
+                                  });
+                                }
+                              },
+                              icon: const Icon(Icons.search)),
                           filled: true,
-                          fillColor: themeState==ThemeData.dark()?darkGrayColor:whiteColor,
+                          fillColor: themeState == ThemeData.dark()
+                              ? darkGrayColor
+                              : whiteColor,
                           border: OutlineInputBorder(
                             borderSide: BorderSide.none,
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
                       ),
-                      valid?const Column(
-                        children: [
-                          miniSizedBox,
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(validateNote,style: TextStyle(
-                                color: gradientColor3,fontSize: 16
-                            ),),
-                          ),
-                          miniSizedBox
-                        ],
-                      ):const SizedBox(),
+                      valid
+                          ? const Column(
+                              children: [
+                                miniSizedBox,
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    validateNote,
+                                    style: TextStyle(
+                                        color: gradientColor3, fontSize: 16),
+                                  ),
+                                ),
+                                miniSizedBox
+                              ],
+                            )
+                          : const SizedBox(),
                       const Divider(thickness: 2),
                       normalSizedBox,
                       TextFormField(
@@ -191,125 +235,95 @@ class _ReportScreenState extends State<ReportScreen> {
                         cursorColor: blackColor,
                         decoration: InputDecoration(
                           errorStyle: const TextStyle(
-                              color: gradientColor3,fontSize: 16),
+                              color: gradientColor3, fontSize: 16),
                           hintText: dateFormat,
                           prefixIcon: const Icon(
                             Icons.timer_rounded,
                             color: grayColor,
                           ),
                           filled: true,
-                          fillColor: themeState==ThemeData.dark()?darkGrayColor:whiteColor,
+                          fillColor: themeState == ThemeData.dark()
+                              ? darkGrayColor
+                              : whiteColor,
                           border: OutlineInputBorder(
                             borderSide: BorderSide.none,
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
                         onTap: () async {
-                          _selectDate(context);
+                          _selectDate(context, themeState);
                         },
                       ),
-                            normalSizedBox,
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              Expanded(
-                                flex: 6,
-                                child: FormField<String>(
-                                  builder: (FormFieldState<String> state) {
-                                    return InputDecorator(
-                                      decoration: InputDecoration(
-                                        hintText: category,
-                                        prefixIcon: const Icon(
-                                          Icons.compare_outlined,
-                                          color: grayColor,
-                                        ),
-                                        filled: true,
-                                        fillColor: themeState==ThemeData.dark()?darkGrayColor:whiteColor,
-                                        border: OutlineInputBorder(
-                                          borderSide: BorderSide.none,
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                      ),
-                                      child: DropdownButtonHideUnderline(
-                                        child: DropdownButton<CategoryListDataModel>(
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            color: grayColor,
-                                          ),
-                                          hint: const Text(
-                                            selectCategory,
-                                            style: TextStyle(
-                                              color: Colors.grey,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                          items: categoryDataList
-                                              .map<DropdownMenuItem<CategoryListDataModel>>(
-                                                  (CategoryListDataModel value) {
-                                                return DropdownMenuItem(
-                                                  value: value,
-                                                  child: Row(
-                                                    children: [
-                                                      CircleAvatar(
-                                                        backgroundColor: Colors.transparent,
-                                                        child: Icon(value.categoryIcon,
-                                                          color: value.isIncome?Colors.green:Colors.red,),
-                                                      ),
-                                                      const SizedBox(width: 15,),
-                                                      Text(value.category),
-                                                    ],
-                                                  ),
-                                                );
-                                              }).toList(),
-                                          isExpanded: true,
-                                          isDense: true,
-                                          onChanged: (newSelectedCategory) {
-                                            setState(() {
-                                              categoryChoose = newSelectedCategory;
-                                              onIncomeExpenseChange();
-                                            });
-                                          },
-                                          value: categoryChoose,
-                                        ),
-                                      ),
-                                    );
-                                  },
+                      normalSizedBox,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Expanded(
+                            flex: 6,
+                            child: TextFormField(
+                              readOnly: true,
+                              textCapitalization: TextCapitalization.words,
+                              onTap: _showMultiSelectForIncomeAndExpense,
+                              decoration: InputDecoration(
+                                errorStyle: const TextStyle(
+                                    color: gradientColor3, fontSize: 16),
+                                hintText: "Income/Expense",
+                                prefixIcon: const Icon(
+                                  Icons.compare_outlined,
+                                  color: grayColor,
+                                ),
+                                filled: true,
+                                fillColor: themeState == ThemeData.dark()
+                                    ? darkGrayColor
+                                    : whiteColor,
+                                border: OutlineInputBorder(
+                                  borderSide: BorderSide.none,
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
-                              const SizedBox(width:5),
-                              Expanded(
-                                flex: 4,
-                                child: TextFormField(
-                                  readOnly: true,
-                                  textCapitalization: TextCapitalization.words,
-                                  onTap: _showMultiSelect,
-                                  decoration: InputDecoration(
-                                    errorStyle: const TextStyle(
-                                        color: gradientColor3,fontSize: 16),
-                                    hintText: category,
-                                    prefixIcon: const Icon(
-                                      Icons.grid_view_rounded,
-                                      color: grayColor,
-                                    ),
-                                    filled: true,
-                                    fillColor: themeState==ThemeData.dark()?darkGrayColor:whiteColor,
-                                    border: OutlineInputBorder(
-                                      borderSide: BorderSide.none,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
+                            )
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
+                              flex: 4,
+                              child: TextFormField(
+                                readOnly: true,
+                                textCapitalization: TextCapitalization.words,
+                                onTap: _showMultiSelect,
+                                decoration: InputDecoration(
+                                  errorStyle: const TextStyle(
+                                      color: gradientColor3, fontSize: 16),
+                                  hintText: category,
+                                  prefixIcon: const Icon(
+                                    Icons.grid_view_rounded,
+                                    color: grayColor,
                                   ),
-                                )
-                              ),
-                            ],
-                            ),
+                                  filled: true,
+                                  fillColor: themeState == ThemeData.dark()
+                                      ? darkGrayColor
+                                      : whiteColor,
+                                  border: OutlineInputBorder(
+                                    borderSide: BorderSide.none,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              )),
+                        ],
+                      ),
                       normalSizedBox,
                       InkWell(
-                        onTap:() {
-                          getFilteredTransactions(startDate:firstDate?? DateTime(2000),endDate: lastDate ?? DateTime(2101),categories: selectedItems.isNotEmpty?selectedItems:subCategoryList);
+                        onTap: () {
+                            getFilteredTransactions(
+                                startDate: firstDate ?? DateTime(2000),
+                                endDate: lastDate ?? DateTime(2101),
+                                categories: selectedItems.isNotEmpty
+                                    ? selectedItems
+                                    : subCategoryList);
+
                         },
                         child: Container(
                           decoration: BoxDecoration(
-                              boxShadow:  const [
+                              boxShadow: const [
                                 BoxShadow(
                                   color: grayColor,
                                   offset: Offset(0.0, 1.0), //(x,y)
@@ -323,74 +337,107 @@ class _ReportScreenState extends State<ReportScreen> {
                                   colors: colors)),
                           child: const Center(
                               child: Padding(
-                                padding: EdgeInsets.all(20.0),
-                                child: Text(
-                                  applyFilter,
-                                  style: TextStyle(
-                                      color: whiteColor,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              )),
+                            padding: EdgeInsets.all(20.0),
+                            child: Text(
+                              applyFilter,
+                              style: TextStyle(
+                                  color: whiteColor,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          )),
                         ),
                       ),
                       normalSizedBox,
-                      filteredList.isNotEmpty?Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              const Text(total,style: TextStyle(color: grayColor,fontWeight: FontWeight.bold),),
-                              Text(getTotal(filteredList).toStringAsFixed(2),style:const  TextStyle(fontWeight: FontWeight.bold),),
-                            ],
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Row(
+                      filteredList.isNotEmpty
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                SettingsIcon(onTap: () {
-                                  exportToExcel(filteredList);
-                                }, icon: Icons.add_chart,),
-                                const SizedBox(
-                                  width: 5,
+                                Row(
+                                  children: [
+                                    const Text(
+                                      total,
+                                      style: TextStyle(
+                                          color: grayColor,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                      getTotal(filteredList).toStringAsFixed(2),
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
                                 ),
-                                SettingsIcon(onTap: () {
-                                  showChart(transactions: filteredList);
-                                }, icon: Icons.pie_chart,),
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Row(
+                                    children: [
+                                      SettingsIcon(
+                                        onTap: () {
+                                          exportToExcel(filteredList);
+                                        },
+                                        icon: Icons.add_chart,
+                                      ),
+                                      const SizedBox(
+                                        width: 5,
+                                      ),
+                                      SettingsIcon(
+                                        onTap: () {
+                                          showChart(transactions: filteredList);
+                                        },
+                                        icon: Icons.pie_chart,
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ],
-                            ),
-                          ),
-                        ],
-                      ):const SizedBox(),
+                            )
+                          : const SizedBox(),
                       normalSizedBox,
-                      filteredList.isNotEmpty?Column(
-                        children: filteredList.map((e) {
-                          int index = filteredList.indexWhere((element) => element == e);
-                          final transaction = filteredList[index];
-                          return TransactionTile(
-                            transaction: transaction,
-                            onTap: () {
-                              context.read<TransactionBloc>().add(DeleteTransaction(transaction));
-                              context.read<TransactionBloc>().add(GetTransactions());
-                            },
-                            navigateFunction: () async {
-                              var result = await Navigator.push(context, MaterialPageRoute(builder: (context) => AddTransactionScreen(transaction: transaction, isUpdate: true,)));
-                              if (result != null || result == null) {
-                                setState(() {
-                                  context.read<TransactionBloc>().add(GetTransactions());
-                                });
-                              }
-                            },
-                          );
-                        }).toList() ,
-                      ): Center(
-                          child: Lottie.asset(
-                              repeat: false,
-                              'assets/lottie_files/134394-no-transaction.json')),
-                          ],
-                        ),
+                      filteredList.isNotEmpty
+                          ? Column(
+                              children: filteredList.map((e) {
+                                int index = filteredList
+                                    .indexWhere((element) => element == e);
+                                final transaction = filteredList[index];
+                                return TransactionTile(
+                                  transaction: transaction,
+                                  onTap: () {
+                                    context
+                                        .read<TransactionBloc>()
+                                        .add(DeleteTransaction(transaction));
+                                    context
+                                        .read<TransactionBloc>()
+                                        .add(GetTransactions());
+                                  },
+                                  navigateFunction: () async {
+                                    var result = await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) =>
+                                                AddTransactionScreen(
+                                                  transaction: transaction,
+                                                  isUpdate: true,
+                                                )));
+                                    if (result != null || result == null) {
+                                      setState(() {
+                                        context
+                                            .read<TransactionBloc>()
+                                            .add(GetTransactions());
+                                      });
+                                    }
+                                  },
+                                );
+                              }).toList(),
+                            )
+                          : Center(
+                              child: Lottie.asset(
+                                  repeat: false,
+                                  'assets/lottie_files/134394-no-transaction.json')),
+                    ],
+                  ),
                 ),
-                    );
+              );
             },
           ),
         ));
@@ -410,7 +457,8 @@ class _ReportScreenState extends State<ReportScreen> {
     // Create list of ChartData objects
     List<ChartData> chartDataList = [];
     transactionMap.forEach((subCategory, transactionList) {
-      double totalAmount = transactionList.fold(0.0, (sum, transaction) => sum + transaction.amount!);
+      double totalAmount = transactionList.fold(
+          0.0, (sum, transaction) => sum + transaction.amount!);
       chartDataList.add(ChartData(subCategory, totalAmount));
     });
 
@@ -435,8 +483,10 @@ class _ReportScreenState extends State<ReportScreen> {
                       dataSource: chartDataList,
                       xValueMapper: (ChartData data, _) => data.category,
                       yValueMapper: (ChartData data, _) => data.totalAmount,
-                      dataLabelMapper: (ChartData data, _) => '${data.category}: ${data.totalAmount}',
-                      dataLabelSettings: const DataLabelSettings(isVisible: true),
+                      dataLabelMapper: (ChartData data, _) =>
+                          '${data.category}: ${data.totalAmount}',
+                      dataLabelSettings:
+                          const DataLabelSettings(isVisible: true),
                     ),
                   ],
                 ),
@@ -454,36 +504,42 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-
-  Future<void> _selectDate(BuildContext context) async {
+  Future<void> _selectDate(BuildContext context, ThemeData themeState) async {
     final DateTimeRange? pickedDate = await showDateRangePicker(
         context: context,
         firstDate: DateTime(2000),
         lastDate: DateTime(2101),
         currentDate: DateTime.now(),
         saveText: 'Done',
-        builder: (context,child){
-          return Theme(data: Theme.of(context).copyWith(
-              colorScheme: const ColorScheme.light(
-                primary: gradientColor2,
-                onPrimary: whiteColor,
-                onSurface: gradientColor3,
-              )
-          ), child: child!);
-        }
-    );
-    if(pickedDate != null ){
+        builder: (context, child) {
+          return Theme(
+              data: Theme.of(context).copyWith(
+                  colorScheme: themeState == ThemeData.dark()
+                      ? const ColorScheme.dark(
+                          primary: gradientColor2,
+                          onPrimary: whiteColor,
+                          onSurface: gradientColor3,
+                        )
+                      : const ColorScheme.light(
+                          primary: gradientColor2,
+                          onPrimary: whiteColor,
+                          onSurface: gradientColor3,
+                        )),
+              child: child!);
+        });
+    if (pickedDate != null) {
       debugPrint(pickedDate.toString());
       setState(() {
         date = pickedDate;
         firstDate = pickedDate.start;
         lastDate = pickedDate.end;
-        String formattedFirstDate = DateFormat(dateFormatIntl).format(firstDate!);
+        String formattedFirstDate =
+            DateFormat(dateFormatIntl).format(firstDate!);
         String formattedLastDate = DateFormat(dateFormatIntl).format(lastDate!);
         dateController.text = '$formattedFirstDate To $formattedLastDate';
         debugPrint(dateController.text);
       });
-    }else{
+    } else {
       debugPrint("Date is not selected");
     }
   }

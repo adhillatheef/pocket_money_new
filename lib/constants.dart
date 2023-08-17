@@ -97,6 +97,8 @@ const String charts = "Charts";
 const String deleteATransaction = 'Delete a Transaction?';
 const String transactionDeleteContent = 'Swipe right to delete a Transaction';
 const String contact = 'Contact Us';
+const String pleaseAddCategory = "Please Add a Category";
+const String ok = "OK";
 
 
 const normalSizedBox = SizedBox(height: 20);
@@ -185,30 +187,6 @@ void snackBar(context,String text){
   ScaffoldMessenger.of(context).showSnackBar(snackBar);
 }
 
-List<String> incomeCategories = [
-  'Salary/Wages',
-  'Investment Income',
-  'Rental Income',
-  'Freelance Income',
-  'Gifts/Inheritances',
-  'Side Hustles',
-  'Other Income'
-];
-
-List<String> expenseCategories = [
-  'Housing',
-  'Utilities',
-  'Transportation',
-  'Food and Groceries',
-  'Insurance',
-  'Entertainment',
-  'Personal Care',
-  'Debt Payments',
-  'Savings/Investments',
-  'Miscellaneous',
-  'Other Expense'
-];
-
 class StaticData{
   static String? userName;
   static bool? isDarkMode;
@@ -241,7 +219,7 @@ Future<void> exportToExcel(List<Transaction> transactions) async {
 }
 
 contactUs() async{
-  String email = Uri.encodeComponent("adhillatheeflas@gmail.com");
+  String email = Uri.encodeComponent("developeradhil@gmail.com");
   String subject = Uri.encodeComponent("Feedback");
   String body = Uri.encodeComponent("");
   Uri mail = Uri.parse("mailto:$email?subject=$subject&body=$body");
